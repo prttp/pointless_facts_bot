@@ -1,5 +1,8 @@
 # Environment variables
 .env
+
+# Database files
+*.db
 .env.local
 .env.production
 

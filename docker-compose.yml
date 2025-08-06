@@ -1,31 +1,49 @@
 version: '3.8'
 
 services:
-  telegram-bot:
+  bot:
     build: .
-    container_name: pointless-facts-bot
+    container_name: pointless_facts_bot
     restart: unless-stopped
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - LANGUAGE=${LANGUAGE:-en}
       - FACTS_API_URL=${FACTS_API_URL:-https://uselessfacts.jsph.pl/api/v2/facts}
-    env_file:
-      - .env
-    volumes:
-      # Mount logs directory for persistence
-      - ./logs:/app/logs
+      - DEEPL_API_KEY=${DEEPL_API_KEY}
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/facts_bot
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
-      - bot-network
+      - bot_network
+    volumes:
+      - ./logs:/app/logs
+
+  db:
+    image: postgres:15-alpine
+    container_name: facts_bot_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=facts_bot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - bot_network
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('https://api.telegram.org')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+      test: ["CMD-SHELL", "pg_isready -U postgres -d facts_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+
 networks:
-  bot-network:
+  bot_network:
     driver: bridge
