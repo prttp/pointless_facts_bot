@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  telegram-bot:
+    build: .
+    container_name: pointless-facts-bot
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - FACTS_API_URL=${FACTS_API_URL:-https://uselessfacts.jsph.pl/api/v2/facts}
+    env_file:
+      - .env
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+    networks:
+      - bot-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('https://api.telegram.org')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+networks:
+  bot-network:
+    driver: bridge
