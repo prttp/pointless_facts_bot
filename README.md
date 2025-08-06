@@ -20,7 +20,7 @@ Telegram bot that fetches useless facts via HTTP API and sends them to users.
 
 1. **Clone the repository:**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/prttp/pointless_facts_bot
    cd pointless_facts_bot
    ```
 
