@@ -31,15 +31,16 @@ Telegram bot that fetches pointless facts via HTTP API and sends them to users.
 
 3. **Configure environment variables:**
    - Copy `config.env.example` to `.env`
-   - Fill in `TELEGRAM_BOT_TOKEN` with your bot token
-
    ```bash
    cp config.env.example .env
    ```
+   - Fill in `TELEGRAM_BOT_TOKEN` with your bot token
+   - Set `LANGUAGE` to the preferred language (`en` or `ru`)
 
 4. **Edit the `.env` file:**
    ```
    TELEGRAM_BOT_TOKEN=your_bot_token_here
+   LANGUAGE=en
    FACTS_API_URL=https://uselessfacts.jsph.pl/api/v2/facts
    ```
 
