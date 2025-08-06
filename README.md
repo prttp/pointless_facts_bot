@@ -40,22 +40,7 @@ Telegram bot that fetches pointless facts via HTTP API and sends them to users w
    ```bash
    cp config.env.example .env
    ```
-   - Fill in your configuration
-
-4. **Edit the `.env` file:**
-   ```env
-   # Required
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
-   
-   # Optional - Bot language (en/ru)
-   LANGUAGE=ru
-   
-   # Optional - API URL (default is used if not set)
-   FACTS_API_URL=https://uselessfacts.jsph.pl/api/v2/facts
-   
-   # Optional - DeepL API Key for premium translation quality
-   DEEPL_API_KEY=your_deepl_api_key_here
-   ```
+   - Fill in your configuration (see [Environment Variables](#environment-variables) table below)
 
 ## 🌍 Translation Features
 
@@ -78,13 +63,16 @@ python bot.py
 ### Option 2: Docker (Recommended)
 ```bash
 # Build and run with Docker Compose
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop the bot
-docker-compose down
+docker compose down
+
+# Rebuild after code changes
+docker compose down --rmi all && docker compose build --no-cache && docker compose up -d
 ```
 
 ## 📱 Usage
@@ -114,7 +102,8 @@ The bot uses the following API endpoints:
 
 ```
 pointless_facts_bot/
-├── bot.py              # Main bot file
+├── bot.py              # Main bot file with Telegram handlers
+├── database.py         # Database manager for translation caching
 ├── translations.py     # Interface translations
 ├── requirements.txt    # Python dependencies
 ├── config.env.example  # Configuration example
@@ -139,9 +128,21 @@ The bot logs all operations including:
 - Translation service being used (DeepL/Google)
 - Translation attempts and results
 - API requests and responses
-- Error handling
+- Database connection status and operations
+- Cache hits and misses
+- Error handling and recovery
 
-Logs are output to console with INFO level.
+### **Log Levels:**
+- **INFO** - Normal operations, cache hits, successful translations
+- **WARNING** - Database connection issues, translation fallbacks
+- **ERROR** - Critical failures, API errors
+
+### **Log Sources:**
+- **`bot.py`** - Telegram interactions and fact retrieval
+- **`database.py`** - Database operations and caching
+- **Translation services** - DeepL and Google Translate operations
+
+Logs are output to console with INFO level and can be viewed in Docker with `docker compose logs -f`.
 
 ## 📝 Response Examples
 
@@ -159,9 +160,38 @@ Logs are output to console with INFO level.
 Bananas are berries, but strawberries aren't. In botanical terms, a berry is a fruit produced from the ovary of a single flower with seeds embedded in the flesh.
 ```
 
+## 🏗️ Architecture
+
+The project follows a modular architecture with clear separation of concerns:
+
+### **Core Components:**
+
+1. **`bot.py`** - Main Telegram bot application
+   - Handles Telegram API interactions
+   - Manages user commands and callbacks
+   - Coordinates translation and fact retrieval
+   - Uses `DatabaseManager` for caching operations
+
+2. **`database.py`** - Database management layer
+   - `DatabaseManager` class for PostgreSQL operations
+   - Translation caching with hash-based lookups
+   - Connection pooling and error handling
+   - Automatic retry logic for database connections
+
+3. **`translations.py`** - Interface localization
+   - Multi-language support for bot interface
+   - Centralized text management
+
+### **Architecture Benefits:**
+- **Separation of Concerns** - Database logic isolated from bot logic
+- **Reusability** - `DatabaseManager` can be used in other parts of the project
+- **Testability** - Each component can be tested independently
+- **Maintainability** - Clear structure makes code easier to understand and modify
+- **Scalability** - Modular design allows for easy expansion
+
 ## 🔧 Configuration Options
 
-### Environment Variables:
+### Environment Variables: {#environment-variables}
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
@@ -179,7 +209,7 @@ Bananas are berries, but strawberries aren't. In botanical terms, a berry is a f
 
 ## 💾 Translation Caching
 
-The bot automatically caches translations in PostgreSQL database to save API calls and improve performance.
+The bot automatically caches translations in PostgreSQL database using the `DatabaseManager` class to save API calls and improve performance.
 
 ### Cache Features:
 - **Automatic caching** - translations are saved after first use
@@ -188,6 +218,8 @@ The bot automatically caches translations in PostgreSQL database to save API cal
 - **Timestamp tracking** - records when translations were created
 - **PostgreSQL database** - production-ready, scalable storage
 - **Indexed queries** - optimized for fast lookups
+- **Connection management** - robust database connection handling with retry logic
+- **Error resilience** - bot continues working even if database operations fail
 
 ### Cache Management:
 
@@ -215,12 +247,34 @@ DELETE FROM translation_cache;
 - **Consistency** - same fact always gets same translation
 - **Offline capability** - cached translations work without internet
 
+## 🧪 Development & Testing
+
+### **Running Tests:**
+```bash
+# Test API connectivity
+python test_api.py
+
+# Test database connection
+python -c "from database import DatabaseManager; db = DatabaseManager('postgresql://postgres:postgres@localhost:5432/facts_bot'); print('Database available:', db.is_available())"
+```
+
+### **Code Structure:**
+- **`bot.py`** - Contains `FactsBot` class with Telegram handlers
+- **`database.py`** - Contains `DatabaseManager` class for database operations
+- **`translations.py`** - Contains `get_text()` function for localization
+
+### **Key Classes:**
+- **`FactsBot`** - Main bot class handling Telegram interactions
+- **`DatabaseManager`** - Database operations and translation caching
+- **`GoogleTranslator`/`DeeplTranslator`** - Translation services
+
 ## 🤝 Contributing
 
 1. Fork the repository
 2. Create a branch for new feature
-3. Make changes
-4. Create Pull Request
+3. Make changes following the modular architecture
+4. Test your changes
+5. Create Pull Request
 
 ## 📄 License
 
