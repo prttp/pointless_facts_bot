@@ -1,10 +1,10 @@
-# 🤖 Telegram Bot for Useless Facts
+# 🤖 Telegram Bot for Pointless Facts
 
-Telegram bot that fetches useless facts via HTTP API and sends them to users.
+Telegram bot that fetches pointless facts via HTTP API and sends them to users.
 
 ## 🚀 Features
 
-- Get random useless facts
+- Get random pointless facts
 - Get today's fact
 - English language support
 - Interactive buttons for easy use
