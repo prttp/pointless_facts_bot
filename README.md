@@ -45,10 +45,19 @@ Telegram bot that fetches pointless facts via HTTP API and sends them to users.
 
 ## 🚀 Running
 
+### Option 1: Direct Python
 ```bash
 python bot.py
 ```
 
+### Option 2: Docker (Recommended)
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
 ## 📱 Usage
 
 ### Bot Commands:
@@ -80,6 +89,9 @@ pointless_facts_bot/
 ├── requirements.txt    # Python dependencies
 ├── config.env.example  # Configuration example
 ├── .env               # Environment variables file (create)
+├── Dockerfile         # Docker configuration
+├── docker-compose.yml # Docker Compose setup
+├── .dockerignore      # Docker ignore file
 └── README.md          # Documentation
 ```
 
