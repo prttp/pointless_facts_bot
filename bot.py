@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from translations import get_text
+from deep_translator import GoogleTranslator, DeeplTranslator
 
 # Load environment variables
 load_dotenv()
@@ -26,17 +27,44 @@ if LANGUAGE not in SUPPORTED_LANGUAGES:
     logger.warning(f"Unsupported language: {LANGUAGE}, using default 'en'")
     LANGUAGE = 'en'
 
+# DeepL API key
+DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
+
 class FactsBot:
     def __init__(self):
         self.api_url = FACTS_API_URL
+        # Try DeepL first, fallback to Google
+        try:
+            self.translator = DeeplTranslator(source='en', target=LANGUAGE, api_key=DEEPL_API_KEY)
+            logger.info("Using DeepL Translator")
+        except Exception as e:
+            logger.warning(f"DeepL initialization failed: {e}")
+            self.translator = GoogleTranslator(source='en', target=LANGUAGE)
+            logger.info("Using Google Translator")
     
     def escape_markdown(self, text):
         """Escape special characters for Markdown"""
         # Only escape characters that can break Markdown parsing
-        special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '=', '|', '{', '}']
+        special_chars = ['_', '*', '[', ']', '~', '`', '>', '#', '+', '=', '|', '{', '}']
         for char in special_chars:
             text = text.replace(char, f'\\{char}')
         return text
+    
+    def translate_fact(self, text):
+        """Translate fact text to target language"""
+        if LANGUAGE == 'en':
+            return text
+        
+        try:
+            if not text or text.strip() == '':
+                return text
+            
+            translated = self.translator.translate(text)
+            logger.info(f"Translated: '{text}' -> '{translated}'")
+            return translated
+        except Exception as e:
+            logger.error(f"Translation error: {e}")
+            return text  # Return original text if translation fails
     
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Start command handler"""
@@ -83,10 +111,13 @@ class FactsBot:
             fact_data = response.json()
             fact_text = fact_data.get('text', get_text('fact_not_found', LANGUAGE))
             
-            # Escape special characters in fact text only
-            escaped_fact = self.escape_markdown(fact_text)
+            # Translate the fact
+            translated_fact = self.translate_fact(fact_text)
             
-            message = f"{get_text('random_fact_title', LANGUAGE)}\n\n{escaped_fact}"
+            # Escape special characters in translated text
+            escaped_translated = self.escape_markdown(translated_fact)
+            
+            message = f"{get_text('random_fact_title', LANGUAGE)}\n\n{escaped_translated}"
             
             if update.callback_query:
                 await update.callback_query.answer()
@@ -119,10 +150,13 @@ class FactsBot:
             fact_data = response.json()
             fact_text = fact_data.get('text', get_text('today_fact_not_found', LANGUAGE))
             
-            # Escape special characters in fact text only
-            escaped_fact = self.escape_markdown(fact_text)
+            # Translate the fact
+            translated_fact = self.translate_fact(fact_text)
             
-            message = f"{get_text('today_fact_title', LANGUAGE)}\n\n{escaped_fact}"
+            # Escape special characters in translated text
+            escaped_translated = self.escape_markdown(translated_fact)
+            
+            message = f"{get_text('today_fact_title', LANGUAGE)}\n\n{escaped_translated}"
             
             if update.callback_query:
                 await update.callback_query.answer()

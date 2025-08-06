@@ -68,4 +68,7 @@ docker-compose.yml
 
 # Test files
 test_*.py
-*_test.py 
+*_test.py
+
+# Translation cache (if any)
+*.translation_cache 
