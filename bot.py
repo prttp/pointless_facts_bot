@@ -30,6 +30,14 @@ class FactsBot:
     def __init__(self):
         self.api_url = FACTS_API_URL
     
+    def escape_markdown(self, text):
+        """Escape special characters for Markdown"""
+        # Only escape characters that can break Markdown parsing
+        special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '=', '|', '{', '}']
+        for char in special_chars:
+            text = text.replace(char, f'\\{char}')
+        return text
+    
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Start command handler"""
         welcome_text = (
@@ -75,7 +83,10 @@ class FactsBot:
             fact_data = response.json()
             fact_text = fact_data.get('text', get_text('fact_not_found', LANGUAGE))
             
-            message = f"{get_text('random_fact_title', LANGUAGE)}\n\n{fact_text}"
+            # Escape special characters in fact text only
+            escaped_fact = self.escape_markdown(fact_text)
+            
+            message = f"{get_text('random_fact_title', LANGUAGE)}\n\n{escaped_fact}"
             
             if update.callback_query:
                 await update.callback_query.answer()
@@ -108,7 +119,10 @@ class FactsBot:
             fact_data = response.json()
             fact_text = fact_data.get('text', get_text('today_fact_not_found', LANGUAGE))
             
-            message = f"{get_text('today_fact_title', LANGUAGE)}\n\n{fact_text}"
+            # Escape special characters in fact text only
+            escaped_fact = self.escape_markdown(fact_text)
+            
+            message = f"{get_text('today_fact_title', LANGUAGE)}\n\n{escaped_fact}"
             
             if update.callback_query:
                 await update.callback_query.answer()
