@@ -2,11 +2,16 @@
 import os
 import logging
 import requests
+import hashlib
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from translations import get_text
 from deep_translator import GoogleTranslator, DeeplTranslator
+
+# Database imports
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 # Load environment variables
 load_dotenv()
@@ -17,6 +22,11 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# Disable frequent HTTP logs from httpx and telegram
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('telegram').setLevel(logging.WARNING)
+logging.getLogger('telegram.ext').setLevel(logging.WARNING)
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
@@ -30,9 +40,17 @@ if LANGUAGE not in SUPPORTED_LANGUAGES:
 # DeepL API key
 DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
 
+# Database configuration
+DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/facts_bot')
+
 class FactsBot:
     def __init__(self):
         self.api_url = FACTS_API_URL
+        self.database_url = DATABASE_URL
+        
+        # Test database connection
+        self._test_db_connection()
+        
         # Try DeepL first, fallback to Google
         try:
             self.translator = DeeplTranslator(source='en', target=LANGUAGE, api_key=DEEPL_API_KEY)
@@ -41,6 +59,99 @@ class FactsBot:
             logger.warning(f"DeepL initialization failed: {e}")
             self.translator = GoogleTranslator(source='en', target=LANGUAGE)
             logger.info("Using Google Translator")
+    
+
+    
+    def _test_db_connection(self):
+        """Test database connection and verify table exists"""
+        max_retries = 5
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                conn = psycopg2.connect(self.database_url)
+                cursor = conn.cursor()
+                
+                # Test basic connection
+                cursor.execute('SELECT 1')
+                cursor.fetchone()
+                
+                # Check if translation_cache table exists
+                cursor.execute('''
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_name = 'translation_cache'
+                    )
+                ''')
+                table_exists = cursor.fetchone()[0]
+                
+                conn.close()
+                
+                if table_exists:
+                    logger.info("Database connection successful - translation_cache table found")
+                    return
+                else:
+                    logger.warning("Database connected but translation_cache table not found")
+                    # Table will be created by init_db.sql, so this is expected on first run
+                    return
+                    
+            except Exception as e:
+                logger.warning(f"Database connection attempt {attempt + 1} failed: {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    logger.error(f"Failed to connect to database after {max_retries} attempts")
+                    logger.warning("Bot will continue without translation caching")
+                    # Don't raise exception - bot can work without cache
+    
+    def _get_fact_hash(self, text):
+        """Generate hash for fact text"""
+        return hashlib.md5(text.encode('utf-8')).hexdigest()
+    
+    def _get_cached_translation(self, text):
+        """Get cached translation if exists"""
+        try:
+            fact_hash = self._get_fact_hash(text)
+            
+            conn = psycopg2.connect(self.database_url)
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT translated_text, translator_used FROM translation_cache WHERE fact_hash = %s',
+                (fact_hash,)
+            )
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                translated_text, translator_used = result
+                logger.info(f"Cache hit: {translator_used} translation found")
+                return translated_text
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to read from cache: {e}")
+            return None
+    
+    def _save_translation_to_cache(self, original_text, translated_text, translator_used):
+        """Save translation to cache"""
+        try:
+            fact_hash = self._get_fact_hash(original_text)
+            
+            conn = psycopg2.connect(self.database_url)
+            cursor = conn.cursor()
+            cursor.execute(
+                'INSERT INTO translation_cache (fact_hash, original_text, translated_text, translator_used) VALUES (%s, %s, %s, %s) ON CONFLICT (fact_hash) DO UPDATE SET translated_text = EXCLUDED.translated_text, translator_used = EXCLUDED.translator_used, created_at = CURRENT_TIMESTAMP',
+                (fact_hash, original_text, translated_text, translator_used)
+            )
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"Translation saved to cache: {translator_used}")
+        except Exception as e:
+            logger.warning(f"Failed to save to cache: {e}")
+            # Don't raise the exception - just log it and continue
+            # This prevents the bot from crashing if cache operations fail
     
     def escape_markdown(self, text):
         """Escape special characters for Markdown"""
@@ -51,16 +162,27 @@ class FactsBot:
         return text
     
     def translate_fact(self, text):
-        """Translate fact text to target language"""
+        """Translate fact text to target language with caching"""
         if LANGUAGE == 'en':
             return text
         
+        if not text or text.strip() == '':
+            return text
+        
+        # Check cache first
+        cached_translation = self._get_cached_translation(text)
+        if cached_translation:
+            return cached_translation
+        
+        # Translate and cache the result
         try:
-            if not text or text.strip() == '':
-                return text
-            
             translated = self.translator.translate(text)
-            logger.info(f"Translated: '{text}' -> '{translated}'")
+            translator_name = "DeepL" if isinstance(self.translator, DeeplTranslator) else "Google"
+            
+            # Save to cache
+            self._save_translation_to_cache(text, translated, translator_name)
+            
+            logger.info(f"Translated: '{text}' -> '{translated}' ({translator_name})")
             return translated
         except Exception as e:
             logger.error(f"Translation error: {e}")

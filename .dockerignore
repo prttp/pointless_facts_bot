@@ -71,4 +71,7 @@ test_*.py
 *_test.py
 
 # Translation cache (if any)
-*.translation_cache 
+*.translation_cache
+
+# Database files
+*.db 

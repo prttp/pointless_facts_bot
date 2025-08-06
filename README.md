@@ -8,6 +8,7 @@ Telegram bot that fetches pointless facts via HTTP API and sends them to users w
 - Get today's fact
 - **Multi-language support** (English and Russian)
 - **High-quality translation** using DeepL API (with Google Translate fallback)
+- **Translation caching** - saves API calls by storing translations in SQLite database
 - Interactive buttons for easy use
 - Error handling and logging
 - Markdown formatting support
@@ -18,6 +19,7 @@ Telegram bot that fetches pointless facts via HTTP API and sends them to users w
 - Python 3.8+
 - Telegram Bot Token (get from [@BotFather](https://t.me/BotFather))
 - DeepL API Key (optional, for premium translation quality)
+- PostgreSQL database
 - Internet access
 
 ## 🛠️ Installation
@@ -117,6 +119,7 @@ pointless_facts_bot/
 ├── requirements.txt    # Python dependencies
 ├── config.env.example  # Configuration example
 ├── .env               # Environment variables file (create)
+├── init_db.sql        # PostgreSQL initialization script
 ├── Dockerfile         # Docker configuration
 ├── docker-compose.yml # Docker Compose setup
 ├── .dockerignore      # Docker ignore file
@@ -166,11 +169,51 @@ Bananas are berries, but strawberries aren't. In botanical terms, a berry is a f
 | `LANGUAGE` | ❌ No | `en` | Bot language (`en`/`ru`) |
 | `FACTS_API_URL` | ❌ No | API URL | Facts API endpoint |
 | `DEEPL_API_KEY` | ❌ No | - | DeepL API key for premium translation |
+| `DATABASE_URL` | ❌ No | PostgreSQL | Database connection string |
 
 ### Translation Priority:
-1. **DeepL** (if API key provided)
-2. **Google Translate** (fallback)
-3. **Original text** (if translation fails)
+1. **Cache** (if translation exists)
+2. **DeepL** (if API key provided)
+3. **Google Translate** (fallback)
+4. **Original text** (if translation fails)
+
+## 💾 Translation Caching
+
+The bot automatically caches translations in PostgreSQL database to save API calls and improve performance.
+
+### Cache Features:
+- **Automatic caching** - translations are saved after first use
+- **Hash-based lookup** - fast retrieval using MD5 hash of original text
+- **Translator tracking** - stores which translator was used (DeepL/Google)
+- **Timestamp tracking** - records when translations were created
+- **PostgreSQL database** - production-ready, scalable storage
+- **Indexed queries** - optimized for fast lookups
+
+### Cache Management:
+
+For advanced cache management, you can connect directly to the PostgreSQL database:
+
+```bash
+# Connect to database container
+docker exec -it facts_bot_db psql -U postgres -d facts_bot
+
+# Show cache statistics
+SELECT COUNT(*) as total_translations FROM translation_cache;
+SELECT translator_used, COUNT(*) FROM translation_cache GROUP BY translator_used;
+
+# Show recent translations
+SELECT original_text, translated_text, translator_used, created_at 
+FROM translation_cache ORDER BY created_at DESC LIMIT 10;
+
+# Clear all cached translations
+DELETE FROM translation_cache;
+```
+
+### Cache Benefits:
+- **Cost savings** - reduces DeepL API calls
+- **Speed improvement** - instant retrieval of cached translations
+- **Consistency** - same fact always gets same translation
+- **Offline capability** - cached translations work without internet
 
 ## 🤝 Contributing
 
