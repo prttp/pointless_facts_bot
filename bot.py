@@ -129,7 +129,12 @@ class FactsBot:
         try:
             url = f"{self.api_url}/random"
             
-            response = requests.get(url, headers={'Accept': 'application/json'})
+            # Add timeout for the request
+            response = requests.get(
+                url, 
+                headers={'Accept': 'application/json'},
+                timeout=10  # 10 seconds timeout
+            )
             response.raise_for_status()
             
             fact_data = response.json()
@@ -168,7 +173,12 @@ class FactsBot:
         try:
             url = f"{self.api_url}/today"
             
-            response = requests.get(url, headers={'Accept': 'application/json'})
+            # Add timeout for the request
+            response = requests.get(
+                url, 
+                headers={'Accept': 'application/json'},
+                timeout=10  # 10 seconds timeout
+            )
             response.raise_for_status()
             
             fact_data = response.json()
@@ -229,8 +239,17 @@ def main():
     # Create bot instance
     bot = FactsBot()
     
-    # Create application
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    # Create application with optimized timeouts and concurrent updates
+    application = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .concurrent_updates(True)  # Enable concurrent processing
+        .get_updates_read_timeout(30)  # Read timeout
+        .get_updates_write_timeout(30)  # Write timeout
+        .get_updates_connect_timeout(30)  # Connection timeout
+        .get_updates_pool_timeout(30)  # Pool timeout
+        .build()
+    )
     
     # Add command handlers
     application.add_handler(CommandHandler("start", bot.start))
@@ -241,9 +260,16 @@ def main():
     # Add button handler
     application.add_handler(CallbackQueryHandler(bot.button_callback))
     
-    # Start the bot
-    logger.info("Bot started...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    # Start the bot with optimized polling settings
+    logger.info("Bot started with optimized polling...")
+    logger.info("This version uses long polling with reduced CPU usage")
+    application.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=True,  # Ignore old updates on startup
+        poll_interval=2.0,  # Increased interval between requests (2 seconds)
+        timeout=30,  # Long timeout for long polling
+        bootstrap_retries=5  # Number of connection attempts
+    )
 
 if __name__ == '__main__':
     main() 
