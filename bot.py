@@ -266,7 +266,7 @@ def main():
     application.run_polling(
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=True,  # Ignore old updates on startup
-        poll_interval=2.0,  # Increased interval between requests (2 seconds)
+        poll_interval=1.0,  # Increased interval between requests (1 second)
         timeout=30,  # Long timeout for long polling
         bootstrap_retries=5  # Number of connection attempts
     )

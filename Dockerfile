@@ -25,7 +25,7 @@ RUN adduser --disabled-password --gecos '' appuser \
 USER appuser
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=600s --timeout=10s --start-period=300s --retries=3 \
     CMD python -c "import requests; requests.get('https://api.telegram.org')" || exit 1
 
 # Expose port (if needed for webhooks)
