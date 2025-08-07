@@ -20,7 +20,6 @@ Telegram bot that fetches pointless facts via HTTP API and sends them to users w
 - Telegram Bot Token (get from [@BotFather](https://t.me/BotFather))
 - DeepL API Key (optional, for premium translation quality)
 - PostgreSQL database
-- Internet access
 
 ## 🛠️ Installation
 
@@ -245,7 +244,6 @@ DELETE FROM translation_cache;
 - **Cost savings** - reduces DeepL API calls
 - **Speed improvement** - instant retrieval of cached translations
 - **Consistency** - same fact always gets same translation
-- **Offline capability** - cached translations work without internet
 
 ## 🧪 Development & Testing
 
