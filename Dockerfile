@@ -24,12 +24,5 @@ RUN adduser --disabled-password --gecos '' appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-# Health check
-HEALTHCHECK --interval=600s --timeout=10s --start-period=300s --retries=3 \
-    CMD python -c "import requests; requests.get('https://api.telegram.org')" || exit 1
-
-# Expose port (if needed for webhooks)
-EXPOSE 8080
-
 # Run the bot
 CMD ["python", "bot.py"] 
