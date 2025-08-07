@@ -190,7 +190,7 @@ The project follows a modular architecture with clear separation of concerns:
 
 ## 🔧 Configuration Options
 
-### Environment Variables {#environment-variables}
+### Environment Variables
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
