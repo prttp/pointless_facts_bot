@@ -40,7 +40,7 @@ INTERFACE_TEXTS = {
         'help_title': "**Справка по использованию бота:**",
         'commands_section': "**Команды:**",
         'language_section': "**Язык:**",
-        'language_info': "• Факты предоставляются на английском языке",
+        'language_info': "• Факты переведены с английского языка",
         'random_fact_title': "**Случайный факт:**",
         'today_fact_title': "**Факт дня:**",
         'error_getting_fact': "❌ Ошибка при получении факта:",
