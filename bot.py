@@ -239,15 +239,11 @@ def main():
     # Create bot instance
     bot = FactsBot()
     
-    # Create application with optimized timeouts and concurrent updates
+    # Create application with concurrent processing
     application = (
         Application.builder()
         .token(TELEGRAM_BOT_TOKEN)
         .concurrent_updates(True)  # Enable concurrent processing
-        .get_updates_read_timeout(30)  # Read timeout
-        .get_updates_write_timeout(30)  # Write timeout
-        .get_updates_connect_timeout(30)  # Connection timeout
-        .get_updates_pool_timeout(30)  # Pool timeout
         .build()
     )
     
@@ -260,16 +256,9 @@ def main():
     # Add button handler
     application.add_handler(CallbackQueryHandler(bot.button_callback))
     
-    # Start the bot with optimized polling settings
-    logger.info("Bot started with optimized polling...")
-    logger.info("This version uses long polling with reduced CPU usage")
-    application.run_polling(
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True,  # Ignore old updates on startup
-        poll_interval=1.0,  # Increased interval between requests (1 second)
-        timeout=30,  # Long timeout for long polling
-        bootstrap_retries=5  # Number of connection attempts
-    )
+    # Start the bot
+    logger.info("Bot started...")
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == '__main__':
     main() 
